@@ -1,0 +1,13 @@
+regex:async shouldRequestPasswordToEnableSharing.*?return.*?}|async shouldRequestPasswordToEnableSharing(e){return false}
+regex:didUserSeeSuggestionToTryPremium:.*?,set|didUserSeeSuggestionToTryPremium:()=>{return !0},set
+regex:return \w.user.account.pro_mode|return !0
+regex:("Termius Beta Program".*?[A-Z])=[A-Z](;export)|\g<1>=()=>{}\g<2>
+regex:=\w=>\w>=2|=()=>{return !1}
+regex:,n.push\(.*?path:"/account"}\),|,
+let r="/account"|let r="/terminal"
+api.termius.com|localhost
+sentry.io|localhost
+split.io|localhost
+mixpanel.com|localhost
+
+title:"Terminal"|title:"Terminal[beta]"

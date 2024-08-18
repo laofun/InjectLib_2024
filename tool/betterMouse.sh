@@ -1,0 +1,6 @@
+app_name="BetterMouse"
+app_path="/Applications/${app_name}.app"
+# codesign -f -s - --timestamp=none --all-architectures --deep "/Applications/${app_name}.app"
+codesign -f -s - "/Applications/${app_name}.app/Contents/Frameworks/Paddle.framework/Versions/A/Paddle"
+codesign -f -s - "$app_path"
+xattr -cr "$app_path"

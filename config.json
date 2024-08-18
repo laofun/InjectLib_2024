@@ -1211,6 +1211,17 @@
         "/Contents/Resources/Components.bundle/Contents/Library/LaunchServices/com.bjango.istatmenus.installer",
         "/Contents/Library/LaunchServices/com.bjango.istatmenus.installer"
       ]
+    },
+    {
+      "packageName": "com.naotanhaocan.BetterMouse",
+      "needCopyToAppDir": true,
+      "deepSignApp": true,
+      "noDeep": true,
+      "injectFile": "Paddle.framework/Versions/A/Paddle",
+      "extraShell": "betterMouse.sh",
+      "tccutil": [
+        "All"
+      ]
     }
   ]
 }
