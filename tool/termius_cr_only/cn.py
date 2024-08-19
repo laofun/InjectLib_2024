@@ -19,14 +19,14 @@ files_cache: dict[str:str] = {}
 
 def main():
     if not os.path.exists(
-        "/Applications/Termius\\ Beta.app/Contents/Resources/app.asar_副本"
+        "/Applications/Termius\\ Beta.app/Contents/Resources/app.asar_backup"
     ):
         os.system(
-            "cp /Applications/Termius\\ Beta.app/Contents/Resources/app.asar /Applications/Termius\\ Beta.app/Contents/Resources/app.asar_副本"
+            "cp /Applications/Termius\\ Beta.app/Contents/Resources/app.asar /Applications/Termius\\ Beta.app/Contents/Resources/app.asar_backup"
         )
     else:
         os.system(
-            "cp /Applications/Termius\\ Beta.app/Contents/Resources/app.asar_副本 /Applications/Termius\\ Beta.app/Contents/Resources/app.asar"
+            "cp /Applications/Termius\\ Beta.app/Contents/Resources/app.asar_backup /Applications/Termius\\ Beta.app/Contents/Resources/app.asar"
         )
 
     os.system("rm -rf /Applications/Termius\\ Beta.app/Contents/Resources/app")
