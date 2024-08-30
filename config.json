@@ -574,7 +574,8 @@
       "needCopyToAppDir": true,
       "injectFile": "ADAL4.framework/Versions/A/ADAL4",
       "entitlements": "signkeep.xml"
-    }, {
+    },
+    {
       "packageName": [
         "com.microsoft.Word"
       ],
@@ -587,7 +588,7 @@
     {
       "packageName": "com.sublimetext.4",
       "needCopyToAppDir": true,
-      "deepSignApp": true,
+      "noSignTarget": true,
       "entitlements": "signkeep.xml",
       "bridgeFile": "/Contents/MacOS/",
       "injectFile": "sublime_text"
@@ -1207,14 +1208,6 @@
       "tccutil": [
         "All"
       ]
-    },
-    {
-      "packageName": "md.obsidian",
-      "needCopyToAppDir": true,
-      "injectFile": "",
-      "noDeep": true,
-      "noSignTarget": true,
-      "extraShell": "obsidian.sh"
     },
     {
       "packageName": "com.bjango.istatmenus",
