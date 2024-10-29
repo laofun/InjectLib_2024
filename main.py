@@ -13,10 +13,17 @@ def read_input(prompt):
 def search_apps(app_list, install_apps, keyword):
     keyword = keyword.lower()
     installed_apps = {app['CFBundleIdentifier']: app['CFBundleName'].lower() for app in install_apps}
-    def is_match(pn): return any(keyword in p.lower() for p in (pn if isinstance(pn, list) else [pn]))
-    return [{**app, "packageName": pn} for app in app_list
-        if (pn := app.get("packageName")) and is_match(pn) and any(pid == pn and keyword in name for pid, name in installed_apps.items())]
-
+    def is_match(pn):
+        return keyword in (pn.lower() if isinstance(pn, str) else any(keyword in p.lower() for p in pn))
+    matched_apps = []
+    for app in app_list:
+        pn_list = app.get("packageName")
+        if isinstance(pn_list, list):
+            matched = [pn for pn in pn_list if is_match(pn) and any(pid == pn and keyword in name for pid, name in installed_apps.items())]
+            matched_apps.extend({**app, "packageName": pn} for pn in matched)
+        elif pn_list and is_match(pn_list):
+            matched_apps.append({**app, "packageName": pn_list})
+    return matched_apps
 
 def parse_app_info(app_base_locate, app_info_file):
     with open(app_info_file, "rb") as f:
@@ -75,7 +82,7 @@ def handle_keygen(bundleIdentifier):
     subprocess.run("chmod +x ./tool/KeygenStarter", shell=True)
     subprocess.run(f"./tool/KeygenStarter '{bundleIdentifier}' '{username}'", shell=True)
 
-def handle_helper(app_base, target_helper, component_apps, SMExtra, bridge_path):
+def handle_helper(app_base, target_helper, component_apps, SMExtra, bridge_path, useOptool,helperNoInject):
     """增强Helper
 
     Args:
@@ -84,7 +91,15 @@ def handle_helper(app_base, target_helper, component_apps, SMExtra, bridge_path)
     """
     subprocess.run("chmod +x ./tool/GenShineImpactStarter", shell=True)
     subprocess.run(f"./tool/GenShineImpactStarter '{target_helper}' {'' if SMExtra is None else SMExtra}", shell=True)
-    subprocess.run(f"./tool/insert_dylib '{bridge_path}91QiuChenly.dylib' '{target_helper}' '{target_helper}'", shell=True)
+    if useOptool:
+        sh = f"./tool/optool install -p '{bridge_path}91QiuChenly.dylib' -t '{target_helper}'"
+    else:
+        sh = f"./tool/insert_dylib '{bridge_path}91QiuChenly.dylib' '{target_helper}' '{target_helper}'"
+    
+    if helperNoInject:
+        pass
+    else:
+        subprocess.run(sh, shell=True)
     helper_name = target_helper.split("/")[-1]
 
     # 检查是否存在
@@ -157,20 +172,32 @@ def main():
             matched_apps = search_apps(app_list, install_apps, keyword)
             if not matched_apps:
                 print("未找到匹配的应用程序。")
-                exit(0)
-
-            print("找到以下匹配的应用程序:")
-            for i, app in enumerate(matched_apps, 1):
-                package_name = app.get("packageName")
-                print(f"{i}. {' / '.join(package_name) if isinstance(package_name, list) else package_name}")
-
-            choice = input("请输入要注入的应用程序编号,或输入0退出: ").strip()
-            if choice.isdigit() and 0 < int(choice) <= len(matched_apps):
-                selected_app = matched_apps[int(choice) - 1]
-                app_Lst = [selected_app.copy() | {"packageName": name} for name in (selected_app["packageName"] if isinstance(selected_app["packageName"], list) else [selected_app["packageName"]])]
             else:
-                print("已退出程序。")
-                exit(0)
+                app_Lst = []
+                selected = set()
+                while len(selected) < len(matched_apps):
+                    print("找到以下匹配的应用程序:")
+                    for i, app in enumerate(matched_apps, 1):
+                        status = " ✅[已选中]" if i-1 in selected else ""
+                        print(f"{i}. {app.get('packageName')}{status}")
+                    if len(selected) == len(matched_apps):
+                        print("所有应用已选中，即将开始处理...")
+                        break
+                    choice = input("请输入要注入的应用程序编号，输入0退出，或按回车继续: ").strip()
+                    if choice == '0':
+                        print("已退出程序。")
+                        exit(0)
+                    elif choice.isdigit() and 0 < int(choice) <= len(matched_apps):
+                        index = int(choice) - 1
+                        if index not in selected:
+                            app_Lst.append(matched_apps[index])
+                            selected.add(index)
+                            if len(selected) == len(matched_apps): print("所有应用已选中，即将开始处理...")
+                        else: print(f"应用 {matched_apps[index].get('packageName')} 已经被选择，请选择其他应用。")
+                    elif choice == '':
+                        if not app_Lst: print("未选择任何应用，请至少选择一个应用。")
+                        else: break
+                    else: print("无效的输入，请重新选择。")
         else:
             app_Lst = [app.copy() | {"packageName": name} for app in app_list
                if not (app.get("forQiuChenly") and not os.path.exists("/Users/qiuchenly"))
@@ -198,6 +225,8 @@ def main():
             onlysh = app.get("onlysh")
             SMExtra = app.get("SMExtra")
             keygen = app.get("keygen")
+            useOptool = app.get("useOptool")
+            helperNoInject = app.get("helperNoInject") 
 
             local_app = [
                 local_app
@@ -310,9 +339,13 @@ def main():
             current = Path(__file__).resolve()
 
             sh = f"chmod +x {current.parent}/tool/insert_dylib"
+            sh = f"chmod +x {current.parent}/tool/optool"
             subprocess.run(sh, shell=True)
 
-            sh = f"sudo {current.parent}/tool/insert_dylib '{current.parent}/tool/91QiuChenly.dylib' '{backup}' '{dest}'"
+            if useOptool:
+                sh = f"sudo {current.parent}/tool/optool install -p '{current.parent}/tool/91QiuChenly.dylib' -t '{dest}'"
+            else:
+                sh = f"sudo {current.parent}/tool/insert_dylib '{current.parent}/tool/91QiuChenly.dylib' '{backup}' '{dest}'"
 
             if need_copy_to_app_dir:
                 source_dylib = f"{current.parent}/tool/91QiuChenly.dylib"
@@ -339,7 +372,10 @@ def main():
                         ]
                     )
                 for it in desireApp:
-                    bsh = rf"sudo {current.parent}/tool/insert_dylib {destination_dylib} '{backup}' '{it}'"
+                    if useOptool:
+                        bsh = rf"sudo {current.parent}/tool/optool install -p {destination_dylib} -t '{it}'"
+                    else:
+                        bsh = rf"sudo {current.parent}/tool/insert_dylib {destination_dylib} '{backup}' '{it}'"
                     sh.append(bsh)
 
             if isinstance(sh, list):
@@ -392,6 +428,8 @@ def main():
                         componentApp,
                         SMExtra,
                         f"{app_base_locate}{bridge_file}",
+                        useOptool,
+                        helperNoInject
                     )
             if tccutil is not None:
                 if tccutil := tccutil:
