@@ -82,7 +82,7 @@ def handle_keygen(bundleIdentifier):
     subprocess.run("chmod +x ./tool/KeygenStarter", shell=True)
     subprocess.run(f"./tool/KeygenStarter '{bundleIdentifier}' '{username}'", shell=True)
 
-def handle_helper(app_base, target_helper, component_apps, SMExtra, bridge_path, useOptool,helperNoInject):
+def handle_helper(app_base, target_helper, component_apps, SMExtra, bridge_path, useOptool,helperNoInject,dylibSelect):
     """增强Helper
 
     Args:
@@ -92,9 +92,9 @@ def handle_helper(app_base, target_helper, component_apps, SMExtra, bridge_path,
     subprocess.run("chmod +x ./tool/GenShineImpactStarter", shell=True)
     subprocess.run(f"./tool/GenShineImpactStarter '{target_helper}' {'' if SMExtra is None else SMExtra}", shell=True)
     if useOptool:
-        sh = f"./tool/optool install -p '{bridge_path}91QiuChenly.dylib' -t '{target_helper}'"
+        sh = f"./tool/optool install -p '{bridge_path}{dylibSelect}' -t '{target_helper}'"
     else:
-        sh = f"./tool/insert_dylib '{bridge_path}91QiuChenly.dylib' '{target_helper}' '{target_helper}'"
+        sh = f"./tool/insert_dylib '{bridge_path}{dylibSelect}' '{target_helper}' '{target_helper}'"
     
     if helperNoInject:
         pass
@@ -158,7 +158,7 @@ def main():
         print("注入时请根据提示输入'y' 或者按下回车键跳过这一项。")
 
         # QiuChenlyTeam 特殊变量
-        isDevHome = os.getenv("InjectLibDev")
+        isDevHome = False #os.getenv("InjectLibDev")
 
 #         start_time = time.time()
         install_apps = scan_apps()
@@ -227,6 +227,12 @@ def main():
             keygen = app.get("keygen")
             useOptool = app.get("useOptool")
             helperNoInject = app.get("helperNoInject") 
+            # forceSignMainExecute
+            forceSignMainExecute = app.get("forceSignMainExecute")
+            dylibSelect = app.get("dylibSelect") # 选择注入的库
+            
+            if dylibSelect is None:
+                dylibSelect = "91QiuChenly.dylib"
 
             local_app = [
                 local_app
@@ -343,22 +349,28 @@ def main():
             subprocess.run(sh, shell=True)
 
             if useOptool:
-                sh = f"sudo {current.parent}/tool/optool install -p '{current.parent}/tool/91QiuChenly.dylib' -t '{dest}'"
+                sh = f"sudo {current.parent}/tool/optool install -p '{current.parent}/tool/{dylibSelect}' -t '{dest}'"
             else:
-                sh = f"sudo {current.parent}/tool/insert_dylib '{current.parent}/tool/91QiuChenly.dylib' '{backup}' '{dest}'"
+                sh = f"sudo {current.parent}/tool/insert_dylib '{current.parent}/tool/{dylibSelect}' '{backup}' '{dest}'"
 
             if need_copy_to_app_dir:
-                source_dylib = f"{current.parent}/tool/91QiuChenly.dylib"
+                source_dylib = f"{current.parent}/tool/{dylibSelect}"
                 if isDevHome:
                     # 开发者自己的prebuild库路径 直接在.zshrc设置环境变量这里就可以读取到。
                     # export InjectLibDev="自己的路径/91QiuChenly.dylib"
                     # 要设置全路径哦 并且不要用sudo python3 main.py 启动 否则读不到你的环境变量
                     source_dylib = isDevHome
-                destination_dylib = f"'{app_base_locate}{bridge_file}91QiuChenly.dylib'"
+                destination_dylib = f"'{app_base_locate}{bridge_file}{dylibSelect}'"
 
                 command = "ln -f -s" if isDevHome else "cp"
                 subprocess.run(
                     f"{command} {source_dylib} {destination_dylib}",
+                    shell=True,
+                )
+                
+                # codesign
+                subprocess.run(
+                    f"codesign -fs - --timestamp=none --all-architectures {destination_dylib}",
                     shell=True,
                 )
 
@@ -397,6 +409,7 @@ def main():
             if no_sign_target is None:
                 print("开始签名...")
                 subprocess.run(f"{sign_prefix} '{dest}'", shell=True)
+                subprocess.run(f"{sign_prefix} '{app_base_locate}'", shell=True)
 
             if disable_library_validate is not None:
                 subprocess.run(
@@ -411,6 +424,9 @@ def main():
 
             if deep_sign_app:
                 subprocess.run(f"{sign_prefix} '{app_base_locate}'", shell=True)
+
+            if forceSignMainExecute:
+                subprocess.run(f"cp '{dest}' /tmp/test && codesign -fs - /tmp/test && cp /tmp/test '{dest}'", shell=True)
 
             subprocess.run(f"sudo xattr -cr '{dest}'", shell=True)
             if auto_handle_helper and helper_file:
@@ -429,7 +445,8 @@ def main():
                         SMExtra,
                         f"{app_base_locate}{bridge_file}",
                         useOptool,
-                        helperNoInject
+                        helperNoInject,
+                        dylibSelect
                     )
             if tccutil is not None:
                 if tccutil := tccutil:
